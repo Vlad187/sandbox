@@ -1,49 +1,70 @@
 package re.infrastructure
 
 import org.parboiled2._
+import Util.IntUtil
 
-case class AppYear(fullNum: Int) {
-  private val (minYear, maxYear) = (2000,3000)
-  fullNum match { case correct if correct.between(minYear, maxYear) || correct.equals(Const.) => }
+object AppRelease {
+  val (minRelease, maxRelease) = (0,99)
+  val mainReleaseNum = 0
 }
+case class AppRelease(num: Int) {
 
-case class AppBranch(fullYear: Int, releaseNum: Int) {
+  import AppRelease._
 
-  import Util.IntUtil
+  def isMain = num.equals(mainReleaseNum)
 
-  private val (minRelease, maxRelease) = (0,99)
-
-
-  releaseNum match { case correct if correct.between(minRelease, maxRelease) && correct.equals(0) => }
-
-  val shortYear = fullYear % 100
-
-  override def toString = formatNormal
-  def formatNormal = s"$fullYear.$releaseNum"
-  def formatShort = s"$shortYear.$releaseNum"
+  num match {
+    case correct
+      if correct.between(minRelease, maxRelease)
+      || correct.equals(mainReleaseNum) =>
+  }
 
 }
 
-case class AppVersion(num: Int)
-case class
+case class AppBranch(year: AppYear, release: AppRelease) {
 
-case class FullAppVersion(branch: AppBranch, version: AppVersion, postfix: Option[String]) {
+  private val stringSeparator = "."
+  def isMain = year.isMain && release.isMain
 
+  def formatNormal = Stream(year.fullNum, release.num).mkString(stringSeparator)
+  def formatShort = Stream(year.shortNum, release.num).mkString(stringSeparator)
+
+}
+
+case class AppVersion(num: Int) {
+
+  num match { case correct if correct >= 0 => }
+
+}
+
+object AppPostfix {
+  val snapshotStr = "-SNAPSHOT"
+}
+case class AppPostfix(str: String) {
+
+  import AppPostfix._
+
+  def isSnapshot = str.equals(snapshotStr)
+  
   private val maxPostfixLength = 100
 
-  postfix match { case correct if correct.getOrElse("").length < maxPostfixLength => }
-
-  override def toString = s"${branch.formatShort}.$version${postfix.getOrElse("")}"
-
-  def isSnapshot = postfix match {
-    case Some(Const.snapshotPostfix) => true
+  def validate = str match {
+    case correct if correct.length < maxPostfixLength => true
     case _ => false
   }
 
-  def isMain = toString match {
-    case "1.0.0-SNAPSHOT" => true
-    case _ => false
-  }
+}
+
+object FullAppVersion {
+  val mainVersionNum = 0
+}
+case class FullAppVersion(branch: AppBranch, version: AppVersion, postfixOpt: Option[AppPostfix]) {
+
+  import FullAppVersion._
+
+  def isMain = branch.isMain && version.num.equals(mainVersionNum) && postfixOpt.nonEmpty && postfixOpt.get.isSnapshot
+
+  def format = s"${branch.formatShort}.$version${postfixOpt.getOrElse("")}"
 
 }
 
@@ -53,25 +74,40 @@ class VersionParser(val input: ParserInput) extends Parser {
 
   private val WhiteSpaceChar = CharPredicate(" \n\r\t\f")
 
-  def yearFull = rule { capture(4.times(Digit)) ~> (_.toInt) }
+  def yearFull = rule {
+    capture(4.times(Digit)|AppYear.mainYearNum.toString) ~> ( (s: String) => AppYear(s.toInt) )
+  }
 
-  def release = rule { capture(2.times(Digit)) ~> (_.toInt) }
+  def release = rule {
+    capture(2.times(Digit)|AppRelease.mainReleaseNum.toString) ~> ( (s: String) => AppRelease(s.toInt) )
+  }
 
-  def appVersion = rule { capture((1 to 2).times(Digit)) ~> (_.toInt) }
+  def appVersion = rule {
+    capture((1 to 2).times(Digit)|FullAppVersion.mainVersionNum.toString) ~> ( (s: String) => AppVersion(s.toInt) )
+  }
 
-  def branch: Rule1[AppBranch] = rule { yearFull ~ '.' ~ release ~> AppBranch }
+  def branch = rule {
+    (yearFull ~ '.' ~ release) ~> (AppBranch(_,_))
+  }
 
-  def postFix = rule { optional(capture(oneOrMore(CharPredicate.Visible))) }
+  def postfix = rule {
+    capture(oneOrMore(CharPredicate.Visible)) ~> (AppPostfix(_))
+  }
 
-  def fullAppVersion: Rule1[FullAppVersion] = rule { branch ~ '.' ~ appVersion ~ postFix ~> FullAppVersion }
+  def fullAppVersion: Rule1[FullAppVersion] = rule {
+    (branch ~ '.' ~ appVersion ~ optional(postfix)) ~> (FullAppVersion(_,_,_))
+  }
 
-  def expression: Rule1[FullAppVersion] = rule { zeroOrMore(WhiteSpaceChar) ~ fullAppVersion ~ zeroOrMore(WhiteSpaceChar) ~ EOI }
+  def expression: Rule1[FullAppVersion] = rule {
+    zeroOrMore(WhiteSpaceChar) ~ fullAppVersion ~ zeroOrMore(WhiteSpaceChar) ~ EOI
+  }
 
 }
 
 object Const {
 
-  val snapshotPostfix = "-SNAPSHOT"
-  val mainFullVersion = FullAppVersion(AppBranch(1, 0), 0, Some(snapshotPostfix))
+  import AppPostfix._
+
+  val mainFullVersion = FullAppVersion(AppBranch(AppYear(1), AppRelease(0)), AppVersion(0), Some(AppPostfix(snapshotStr)))
 
 }
