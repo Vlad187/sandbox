@@ -1,10 +1,10 @@
-package infrastructure
+package re.infrastructure
 
 import scala.collection.immutable.HashMap
 
 object Util {
 
-  implicit class BranchUtil(branch: Branch) {
+  implicit class BranchUtil(branch: AppBranch) {
     def getWeight: Long = 100*branch.fullYear + branch.releaseNum
   }
 
@@ -19,6 +19,10 @@ object Util {
     def getWeight: Long =
       100*fav.branch.getWeight +
         1*fav.version
+  }
+
+  implicit class IntUtil(num: Int) {
+    def between(leftLimit: Int, rightLimit: Int) = (num >= leftLimit) && (num <= rightLimit)
   }
 
 }
