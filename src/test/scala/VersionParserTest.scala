@@ -1,7 +1,7 @@
 import re.infrastructure._
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
-import scala.util.{Failure, Try, Success}
+import scala.util.{Try, Success}
 
 class VersionParserTest extends FunSuite with BeforeAndAfter {
 
@@ -17,7 +17,7 @@ class VersionParserTest extends FunSuite with BeforeAndAfter {
     )
   }
 
-  test("Check release parse") {
+  test("Check wrong input. Negative case.") {
     assert(
       runParser("2015.kd7.6").isFailure
     )

@@ -1,73 +1,8 @@
 package re.infrastructure
 
 import org.parboiled2._
-import Util.IntUtil
 
-object AppRelease {
-  val (minRelease, maxRelease) = (0,99)
-  val mainReleaseNum = 0
-}
-case class AppRelease(num: Int) {
-
-  import AppRelease._
-
-  def isMain = num.equals(mainReleaseNum)
-
-  num match {
-    case correct
-      if correct.between(minRelease, maxRelease)
-      || correct.equals(mainReleaseNum) =>
-  }
-
-}
-
-case class AppBranch(year: AppYear, release: AppRelease) {
-
-  private val stringSeparator = "."
-  def isMain = year.isMain && release.isMain
-
-  def formatNormal = Stream(year.fullNum, release.num).mkString(stringSeparator)
-  def formatShort = Stream(year.shortNum, release.num).mkString(stringSeparator)
-
-}
-
-case class AppVersion(num: Int) {
-
-  num match { case correct if correct >= 0 => }
-
-}
-
-object AppPostfix {
-  val snapshotStr = "-SNAPSHOT"
-}
-case class AppPostfix(str: String) {
-
-  import AppPostfix._
-
-  def isSnapshot = str.equals(snapshotStr)
-  
-  private val maxPostfixLength = 100
-
-  def validate = str match {
-    case correct if correct.length < maxPostfixLength => true
-    case _ => false
-  }
-
-}
-
-object FullAppVersion {
-  val mainVersionNum = 0
-}
-case class FullAppVersion(branch: AppBranch, version: AppVersion, postfixOpt: Option[AppPostfix]) {
-
-  import FullAppVersion._
-
-  def isMain = branch.isMain && version.num.equals(mainVersionNum) && postfixOpt.nonEmpty && postfixOpt.get.isSnapshot
-
-  def format = s"${branch.formatShort}.$version${postfixOpt.getOrElse("")}"
-
-}
-
+//TODO: lazy validations after parsing
 class VersionParser(val input: ParserInput) extends Parser {
 
   import CharPredicate.Digit
@@ -87,7 +22,7 @@ class VersionParser(val input: ParserInput) extends Parser {
   }
 
   def branch = rule {
-    (yearFull ~ '.' ~ release) ~> (AppBranch(_,_))
+    yearFull ~ '.' ~ release ~> (AppBranch(_,_))
   }
 
   def postfix = rule {
@@ -95,7 +30,7 @@ class VersionParser(val input: ParserInput) extends Parser {
   }
 
   def fullAppVersion: Rule1[FullAppVersion] = rule {
-    (branch ~ '.' ~ appVersion ~ optional(postfix)) ~> (FullAppVersion(_,_,_))
+    branch ~ '.' ~ appVersion ~ optional(postfix) ~> (FullAppVersion(_,_,_))
   }
 
   def expression: Rule1[FullAppVersion] = rule {
