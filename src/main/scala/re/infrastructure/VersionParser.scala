@@ -10,27 +10,27 @@ class VersionParser(val input: ParserInput) extends Parser {
   private val WhiteSpaceChar = CharPredicate(" \n\r\t\f")
 
   def yearFull = rule {
-    capture(4.times(Digit)|AppYear.mainYearNum.toString) ~> ( (s: String) => AppYear(s.toInt) )
+    capture(4.times(Digit)|AppYear.mainYearNum.toString) ~> { AppYear apply _.toInt }
   }
 
   def release = rule {
-    capture(2.times(Digit)|AppRelease.mainReleaseNum.toString) ~> ( (s: String) => AppRelease(s.toInt) )
+    capture(2.times(Digit)|AppRelease.mainReleaseNum.toString) ~> { AppRelease apply _.toInt }
   }
 
   def appVersion = rule {
-    capture((1 to 2).times(Digit)|FullAppVersion.mainVersionNum.toString) ~> ( (s: String) => AppVersion(s.toInt) )
+    capture((1 to 2).times(Digit)|FullAppVersion.mainVersionNum.toString) ~> { AppVersion apply _.toInt }
   }
 
   def branch = rule {
-    yearFull ~ '.' ~ release ~> (AppBranch(_,_))
+    { yearFull ~ '.' ~ release } ~> { (y: AppYear, r: AppRelease) => AppBranch.apply(y,r) }
   }
 
   def postfix = rule {
-    capture(oneOrMore(CharPredicate.Visible)) ~> (AppPostfix(_))
+    capture(oneOrMore(CharPredicate.Visible)) ~> { AppPostfix(_) }
   }
 
-  def fullAppVersion: Rule1[FullAppVersion] = rule {
-    branch ~ '.' ~ appVersion ~ optional(postfix) ~> (FullAppVersion(_,_,_))
+  def fullAppVersion = rule {
+    { branch ~ '.' ~ appVersion ~ optional(postfix) } ~> { (b: AppBranch, v: AppVersion, op: Option[AppPostfix]) => FullAppVersion(b,v,op) }
   }
 
   def expression: Rule1[FullAppVersion] = rule {
